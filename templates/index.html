@@ -1,43 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Sign Language Recognition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 20px;
+        }
+        video {
+            width: 60%;
+            border: 2px solid #444;
+            border-radius: 10px;
+        }
+        #prediction {
+            font-size: 24px;
+            margin-top: 20px;
+            color: green;
+        }
+    </style>
 </head>
 <body>
     <h1>Sign Language Recognition</h1>
-    <video id="video" width="640" height="480" autoplay></video>
-    <p>Prediction: <span id="prediction">Loading...</span></p>
+    <video id="webcam" autoplay playsinline></video>
+    <div id="prediction">Prediction: <span id="output">None</span></div>
 
     <script>
-        const video = document.getElementById('video');
-        const predictionText = document.getElementById('prediction');
+        const video = document.getElementById('webcam');
+        const output = document.getElementById('output');
 
-        // Start webcam
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
+        async function startWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
-            });
+                captureAndSendFrame(); // Start frame loop
+            } catch (err) {
+                console.error("Webcam access error:", err);
+            }
+        }
 
-        // Send image to server every 1 second
-        setInterval(() => {
+        async function captureAndSendFrame() {
             const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            const imageData = canvas.toDataURL('image/jpeg');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 640;
+            canvas.height = 480;
 
-            fetch('/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: imageData })
-            })
-            .then(res => res.json())
-            .then(data => {
-                predictionText.innerText = data.prediction || 'None';
-            })
-            .catch(err => console.error(err));
-        }, 1000);
+            setInterval(async () => {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg');
+
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    output.textContent = data.prediction || 'None';
+                } else {
+                    output.textContent = 'Error';
+                }
+            }, 1500); // Capture a frame every 1.5 seconds
+        }
+
+        window.onload = startWebcam;
     </script>
 </body>
 </html>

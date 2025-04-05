@@ -29,33 +29,42 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    try:
-        data = request.get_json()
-        img_data = data['image'].split(',')[1]
-        img_bytes = base64.b64decode(img_data)
-        img = Image.open(BytesIO(img_bytes)).convert('RGB')
-        frame = np.array(img)
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image uploaded'}), 400
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        results = hands.process(frame_rgb)
+    try:
+        image_file = request.files['image']
+        image = Image.open(image_file.stream).convert('RGB')
+        image_np = np.array(image)
+
+        # MediaPipe processes BGR images (OpenCV format)
+        image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+        results = hands.process(image_bgr)
 
         if not results.multi_hand_landmarks:
-            return jsonify({'prediction': 'None'})
+            print("[INFO] No hand detected.")
+            return jsonify({'prediction': 'No hand detected'})
 
-        # Extract landmarks
-        hand_landmarks = results.multi_hand_landmarks[0]
-        landmarks = []
-        for lm in hand_landmarks.landmark:
-            landmarks.extend([lm.x, lm.y, lm.z])
+        for hand_landmarks in results.multi_hand_landmarks:
+            landmarks = []
+            for lm in hand_landmarks.landmark:
+                landmarks.extend([lm.x, lm.y, lm.z])
 
-        # Predict
-        X = scaler.transform([landmarks])
-        prediction = model.predict(X)[0]
+            if len(landmarks) != 63:
+                print(f"[ERROR] Unexpected landmark length: {len(landmarks)}")
+                return jsonify({'prediction': 'Invalid landmark data'})
 
-        return jsonify({'prediction': prediction})
+            landmarks = np.array(landmarks).reshape(1, -1)
+            landmarks_scaled = scaler.transform(landmarks)
+            prediction = rf_model.predict(landmarks_scaled)[0]
+            print(f"[PREDICTION] {prediction}")
+            return jsonify({'prediction': prediction})
+
+        return jsonify({'prediction': 'Hand not recognized'})
+
     except Exception as e:
-        print('Prediction error:', e)
-        return jsonify({'prediction': 'Error'})
+        print(f"[ERROR] Prediction failed: {str(e)}")
+        return jsonify({'error': 'Prediction error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
