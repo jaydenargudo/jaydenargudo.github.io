@@ -3,7 +3,7 @@ import cv2
 import mediapipe as mp
 import pickle
 import numpy as np
-import threading
+import os
 
 app = Flask(__name__)
 
@@ -19,7 +19,7 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(min_detection_confidence=0.8, min_tracking_confidence=0.5)
 mp_drawing = mp.solutions.drawing_utils
 
-# Webcam feed initialization
+# Initialize webcam feed
 cap = cv2.VideoCapture(0)
 
 # Function to generate video feed for web display
@@ -78,6 +78,9 @@ def collect_data():
     # Implement saving data here
     return 'Data collected'
 
-# Run the app
+# Run the app with Gunicorn on Render, and fallback to Flask locally
 if __name__ == '__main__':
-    app.run(debug=True)
+    # On Render, it will pick up the `PORT` environment variable automatically
+    # For local testing, default to port 8000 if PORT environment variable is not set
+    port = int(os.environ.get("PORT", 8000))
+    app.run(debug=True, host="0.0.0.0", port=port)
