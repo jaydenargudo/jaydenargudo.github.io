@@ -1,0 +1,13 @@
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+def my_python_function(name):
+    return {"message": f"Hello, {name}!"}
+
+@app.route("/greet/<name>", methods=["GET"])
+def greet(name):
+    return jsonify(my_python_function(name))
+
+if __name__ == "__main__":
+    app.run(debug=True, port = 5001)
