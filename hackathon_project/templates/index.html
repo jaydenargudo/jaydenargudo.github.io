@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Recognition</title>
+    <style>
+        /* Optional: Add some styles */
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #webcam { width: 80%; margin: auto; }
+        .controls { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Sign Language Recognition</h1>
+    <div id="webcam">
+        <img src="{{ url_for('video_feed') }}" width="80%" />
+    </div>
+</body>
+</html>
